@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Boletins — CBMMG</title>
+<style>
+:root{
+  --azul:#0b2e4f; --azul2:#12456f; --vermelho:#a01c1c;
+  --verde-inst:#D6E3BA;   /* fundo de título de matéria / separata */
+  --verde-tab:#4f7a3f;    /* (legado) */
+  --cinza-tab:#bfbfbf;    /* cabeçalho de tabela — padrão institucional */
+  --cinza-parte:#a6a6a6;  /* faixa das 4 partes */
+  --borda:#d3d8de; --texto:#1f2a37; --fundo:#eef1f5;
+}
+*{box-sizing:border-box}
+/* garante impressão fiel de fundos coloridos em todos os elementos */
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+body{margin:0;font-family:"Segoe UI",Arial,sans-serif;color:var(--texto);background:var(--fundo);
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit}
+
+/* ---------------- layout aplicativo ---------------- */
+#app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+aside{background:var(--azul);color:#fff;padding:0}
+aside .brand{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+aside .brand img{width:34px;height:34px}
+aside .brand b{font-size:14px;line-height:1.2}
+aside nav{padding:8px 0}
+aside nav a{display:block;padding:11px 18px;color:#cfe0ef;text-decoration:none;font-size:13px;border-left:3px solid transparent}
+aside nav a.active{background:rgba(255,255,255,.08);color:#fff;border-left-color:var(--vermelho)}
+aside nav a.disabled{opacity:.45;cursor:not-allowed}
+aside .rodape{position:sticky;top:100vh;padding:12px 18px;font-size:11px;color:#7fa0bd}
+
+main{padding:0;overflow:auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;
+  background:#fff;padding:14px 22px;border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:20}
+.topbar h1{font-size:17px;margin:0}
+.topbar .acoes{display:flex;gap:8px}
+
+.btn{border:1px solid var(--borda);background:#fff;color:var(--texto);
+  padding:8px 14px;border-radius:6px;font-size:13px}
+.btn:hover{background:#f3f6f9}
+.btn.primary{background:var(--azul2);color:#fff;border-color:var(--azul2)}
+.btn.primary:hover{background:var(--azul)}
+.btn.danger{color:var(--vermelho);border-color:#e6b8b8}
+.btn.danger:hover{background:#fbeaea}
+.btn.small{padding:5px 10px;font-size:12px}
+
+.conteudo{padding:22px}
+
+/* ---------------- lista de BGBMs ---------------- */
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.card h3{margin:0;font-size:15px}
+.card .meta{font-size:12px;color:#667}
+.card .acoes{display:flex;gap:6px;margin-top:6px}
+.vazio{background:#fff;border:1px dashed var(--borda);border-radius:8px;padding:40px;text-align:center;color:#889}
+
+/* ---------------- editor ---------------- */
+.editor-wrap{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start}
+.painel{background:#fff;border:1px solid var(--borda);border-radius:8px;padding:16px}
+.painel h2{font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.4px;color:#556}
+.campo{margin-bottom:12px}
+.campo label{display:block;font-size:12px;color:#556;margin-bottom:4px}
+.campo input,.campo select,.campo textarea{width:100%;padding:8px 10px;border:1px solid var(--borda);border-radius:6px;font-size:13px}
+.campo.row{display:flex;gap:8px}
+.campo.row>div{flex:1}
+
+.arvore{font-size:13px}
+.arvore .parte{margin-bottom:14px}
+.arvore .parte>.cab{font-weight:600;color:var(--azul2);display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--borda);padding-bottom:4px;margin-bottom:6px}
+.arvore .unidade{margin:4px 0 4px 4px;border-left:2px solid #e6ebf0;padding-left:8px}
+.arvore .unidade>.cab{display:flex;justify-content:space-between;align-items:center;font-weight:600;color:#334}
+.arvore .materia{display:flex;justify-content:space-between;align-items:center;
+  padding:4px 6px;margin:3px 0;background:#f6f8fa;border-radius:5px;cursor:pointer}
+.arvore .materia:hover{background:#eef3f8}
+.arvore .materia.sel{background:#dcebf7;outline:1px solid #9cc4e4}
+.arvore .materia .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.mini{background:none;border:none;color:#789;font-size:15px;line-height:1;padding:2px 5px;border-radius:4px}
+.mini:hover{background:#e7edf3;color:var(--vermelho)}
+
+/* editor de matéria (form) */
+.mat-editor .toolbar{display:flex;flex-wrap:wrap;gap:4px;border:1px solid var(--borda);border-bottom:none;
+  border-radius:6px 6px 0 0;padding:6px;background:#f7f9fb}
+.mat-editor .toolbar button{border:1px solid var(--borda);background:#fff;border-radius:4px;min-width:30px;height:28px;font-size:13px}
+.mat-editor .toolbar button:hover{background:#eef3f8}
+.mat-editor .rich{border:1px solid var(--borda);border-radius:0 0 6px 6px;min-height:220px;padding:12px;
+  font-family:Arial;font-size:13px;line-height:1.4;outline:none;background:#fff}
+.mat-editor .rich table{border-collapse:collapse;width:100%;margin:8px 0}
+.mat-editor .rich td,.mat-editor .rich th{border:1px solid #333;padding:3px 5px;font-size:12px}
+.mat-editor .rich th{background:var(--cinza-tab);color:#000;font-weight:bold}
+
+/* barra contextual de edição de tabela */
+.tbl-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;
+  border:1px solid var(--borda);border-top:none;background:#eef3f8;padding:6px}
+.tbl-toolbar .tt-label{font-size:11px;color:#556;font-weight:600;margin-right:2px}
+.tbl-toolbar .tt-sep{width:1px;height:18px;background:#cdd6df;margin:0 4px}
+.tbl-toolbar button{border:1px solid var(--borda);background:#fff;border-radius:4px;
+  padding:3px 8px;font-size:11px}
+.tbl-toolbar button:hover{background:#dcebf7}
+.mat-editor .rich td.sel-cell,.mat-editor .rich th.sel-cell{outline:2px solid #4a90d0}
+
+.hint{font-size:11px;color:#8894a2;margin-top:4px}
+
+/* ================= PRÉVIA / DOCUMENTO ================= */
+#previa{background:#fff;border:1px solid var(--borda);border-radius:8px;padding:0;overflow:hidden}
+.folha{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:14mm 12mm;
+  box-shadow:0 0 0 1px #e3e7ec;font-family:Arial,sans-serif;color:#000}
+.doc-scroll{background:#dfe4ea;padding:18px;overflow:auto;max-height:calc(100vh - 150px)}
+
+/* cabeçalho institucional (repete em impressão) */
+.cabecalho{display:grid;grid-template-columns:120px 1fr 70px 170px;border:1px solid #000;font-size:11px}
+.cabecalho>div{border-right:1px solid #000;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px}
+.cabecalho>div:last-child{border-right:none}
+.cabecalho .c-brasao img{width:74px}
+.cabecalho .c-titulo b{font-size:12px;letter-spacing:.3px}
+.cabecalho .c-pag{flex-direction:column;font-size:10px}
+.cabecalho .c-pag .n{font-size:13px;font-weight:bold}
+.cabecalho .c-visto{flex-direction:column;font-size:9px;font-weight:bold}
+.cabecalho .c-visto img{width:120px;margin-bottom:2px}
+
+/* separata */
+.separata-box{border:2px solid #000;margin:10px 0;padding:8px 10px;background:var(--verde-inst)}
+.separata-box .cab{text-align:center;font-weight:bold;font-size:12px;margin-bottom:6px}
+.separata-item{margin:6px 0}
+.separata-item .t{text-align:center;font-weight:bold;font-size:11px}
+.separata-item .b{font-size:11px;text-align:justify;margin-top:2px}
+
+/* faixa de parte (cinza) */
+.faixa-parte{background:var(--cinza-parte);text-align:center;font-weight:bold;color:#000;
+  padding:5px;margin:12px 0 0;border:1px solid #000;font-size:13px;line-height:1.25}
+.sem-alteracao{text-align:center;font-weight:bold;font-size:12px;padding:6px;border:1px solid #000;border-top:none}
+
+/* unidade */
+.unidade-faixa{background:#f6d9bd;text-align:center;font-weight:bold;font-size:12px;
+  padding:3px;margin:12px 0 0;border:1px solid #e0b992}
+
+/* matéria */
+.materia-doc{margin:8px 0}
+.materia-doc .m-titulo{background:var(--verde-inst);text-align:center;font-weight:bold;
+  font-size:12px;padding:3px 4px;border:1px solid #b9c8a2}
+.materia-doc .m-subtitulo{background:var(--verde-inst);text-align:center;font-weight:bold;
+  font-size:11px;padding:2px 4px;border:1px solid #b9c8a2;border-top:none}
+.materia-doc .m-corpo{font-size:11px;line-height:1.35;text-align:justify;padding:6px 2px}
+.materia-doc .m-corpo table{border-collapse:collapse;width:100%;margin:6px 0}
+.materia-doc .m-corpo td,.materia-doc .m-corpo th{border:1px solid #000;padding:2px 4px;font-size:10.5px}
+.materia-doc .m-corpo th{background:var(--cinza-tab);color:#000;text-align:center;font-weight:bold}
+.materia-doc .m-localdata{text-align:right;font-size:11px;margin-top:2px}
+.materia-doc .m-assinatura{text-align:center;font-size:10px;font-weight:bold;margin-top:8px;line-height:1.3}
+
+/* rodapé de fechamento do boletim */
+.fechamento{margin-top:22px;text-align:center;font-size:11px}
+.fechamento img{max-width:210px;display:block;margin:6px auto 2px}
+.fechamento .boletinista{border:1px solid #000;display:inline-block;padding:4px 14px;margin-top:16px;font-size:11px;text-align:center}
+
+/* ---------------- modal ---------------- */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,40,.55);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:#fff;border-radius:10px;padding:22px;width:460px;max-width:92vw}
+.modal h2{margin:0 0 16px;font-size:16px}
+.modal .acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.hidden{display:none!important}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--azul);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:.25s}
+.toast.show{opacity:1}
+
+/* na tela, a tabela de impressão se comporta como blocos normais */
+#print-header-fixo{display:none}
+#doc-print-table{width:100%;border-collapse:collapse}
+#doc-print-table > thead,
+#doc-print-table > tbody,
+#doc-print-table > thead > tr,
+#doc-print-table > tbody > tr,
+#doc-print-table > thead > tr > td,
+#doc-print-table > tbody > tr > td{display:block}
+
+/* =========================================================
+   IMPRESSÃO — o "Baixar BGBM (PDF)" usa window.print()
+   O documento é montado dentro de uma <table>: o cabeçalho
+   institucional fica no <thead>, que o navegador REPETE no
+   topo de cada página impressa E reserva o espaço dele
+   (ao contrário de position:fixed, que sobrepõe). A
+   numeração de página incrementa via contador CSS.
+   ========================================================= */
+@media print{
+  @page{size:A4;margin:10mm 10mm 12mm 10mm}
+  html,body{background:#fff}
+  /* FORÇA a impressão dos fundos coloridos (faixas, cabeçalho de tabela,
+     separata) independentemente da opção "gráficos de plano de fundo" do
+     navegador. Sem isto, o Chrome descarta os fundos e só a borda sobra. */
+  *{
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+    color-adjust:exact !important;
+  }
+  #app{display:block}
+  aside,.topbar,.painel-edicao,.no-print{display:none!important}
+  main,.conteudo{padding:0;margin:0}
+  .editor-wrap{display:block}
+  .doc-scroll{background:#fff;padding:0;max-height:none;overflow:visible}
+  #previa{border:none}
+  .folha{width:auto;min-height:auto;margin:0;padding:0;box-shadow:none}
+
+  /* a tabela volta ao comportamento tabular só na impressão */
+  #doc-print-table{display:table;width:100%}
+  #doc-print-table > thead{display:table-header-group}   /* repete por página */
+  #doc-print-table > tbody{display:table-row-group}
+  #doc-print-table > thead > tr,
+  #doc-print-table > tbody > tr{display:table-row}
+  #doc-print-table > thead > tr > td,
+  #doc-print-table > tbody > tr > td{display:table-cell;padding:0}
+  /* pequeno respiro abaixo do cabeçalho repetido */
+  #doc-print-table > thead .cabecalho{margin:0 0 4px}
+
+  /* numeração automática de páginas */
+  body{counter-reset:pg var(--pag-base, 0)}
+  #doc-print-table > thead > tr{counter-increment:pg}
+  #doc-print-table .c-pag .n::after{content:counter(pg)}
+  /* na impressão o número estático da prévia some (usamos o contador) */
+  #doc-print-table .c-pag .n{font-size:0}
+  #doc-print-table .c-pag .n::after{font-size:13px;font-weight:bold}
+
+  .materia-doc,.separata-box,.unidade-faixa,.sem-alteracao{break-inside:avoid}
+  .faixa-parte{break-after:avoid}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside>
+    <div class="brand">
+      <img id="brand-logo" alt="CBMMG">
+      <b>Boletins<br>CBMMG</b>
+    </div>
+    <nav id="nav">
+      <a href="#" class="active" data-tipo="BGBM">BGBM — Boletim Geral</a>
+      <a href="#" class="disabled" title="Em desenvolvimento">SEPARATAS</a>
+      <a href="#" class="disabled" title="Em desenvolvimento">BEBM — Boletim Especial</a>
+      <a href="#" class="disabled" title="Em desenvolvimento">BI — Boletim Interno</a>
+      <a href="#" class="disabled" title="Em desenvolvimento">BT — Boletim Técnico</a>
+      <a href="#" class="disabled" title="Em desenvolvimento">Diário Oficial</a>
+    </nav>
+    <div class="rodape">Módulo BGBM · v1.0</div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+    <!-- ---- topbar ---- -->
+    <div class="topbar no-print">
+      <h1 id="topbar-titulo">BGBM — Boletim Geral do Corpo de Bombeiros Militar</h1>
+      <div class="acoes" id="topbar-acoes"></div>
+    </div>
+
+    <!-- ---- VIEW: LISTA ---- -->
+    <div class="conteudo" id="view-lista">
+      <div id="lista-cards" class="grid-cards"></div>
+    </div>
+
+    <!-- ---- VIEW: EDITOR ---- -->
+    <div class="conteudo hidden" id="view-editor">
+      <div class="editor-wrap">
+        <!-- coluna esquerda: painel de edição -->
+        <div>
+          <div class="painel painel-edicao">
+            <h2>Cabeçalho do BGBM</h2>
+            <div class="campo row">
+              <div><label>Número</label><input id="f-numero" placeholder="27"></div>
+              <div><label>Página inicial</label><input id="f-pagina" type="number" min="1" value="1"></div>
+            </div>
+            <div class="campo"><label>Data de publicação</label>
+              <input id="f-data" placeholder="09 DE JULHO DE 2026"></div>
+            <h2 style="margin-top:16px">Boletinista</h2>
+            <div class="campo row">
+              <div><label>Posto/Grad.</label><input id="f-bol-pg" placeholder="Cb"></div>
+              <div><label>Nome</label><input id="f-bol-nome" placeholder="Bruno César"></div>
+            </div>
+          </div>
+
+          <div class="painel painel-edicao" style="margin-top:16px">
+            <h2>Separatas do BGBM</h2>
+            <div id="lista-separatas"></div>
+            <button class="btn small" id="add-separata">+ Bloco de separata</button>
+            <p class="hint">Opcional. Título obrigatório; corpo opcional.</p>
+          </div>
+
+          <div class="painel painel-edicao" style="margin-top:16px">
+            <h2>Estrutura (Partes · Unidades · Matérias)</h2>
+            <div class="arvore" id="arvore"></div>
+          </div>
+        </div>
+
+        <!-- coluna direita: prévia (= documento a imprimir) -->
+        <div id="previa">
+          <div class="doc-scroll">
+            <div class="folha" id="documento"><!-- render dinâmico --></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- =============== MODAIS =============== -->
+<div class="modal-bg hidden" id="modal-novo">
+  <div class="modal">
+    <h2>Novo BGBM</h2>
+    <div class="campo row">
+      <div><label>Número</label><input id="n-numero" placeholder="27"></div>
+      <div><label>Página inicial</label><input id="n-pagina" type="number" min="1" value="1"></div>
+    </div>
+    <div class="campo"><label>Data de publicação</label>
+      <input id="n-data" placeholder="09 DE JULHO DE 2026"></div>
+    <div class="acoes">
+      <button class="btn" onclick="fecharModal('modal-novo')">Cancelar</button>
+      <button class="btn primary" id="n-criar">Criar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="modal-unidade">
+  <div class="modal">
+    <h2>Adicionar unidade</h2>
+    <div class="campo"><label>Selecione a unidade</label>
+      <select id="u-select"></select></div>
+    <p class="hint">A unidade entra automaticamente na posição correta da ordem institucional.</p>
+    <div class="acoes">
+      <button class="btn" onclick="fecharModal('modal-unidade')">Cancelar</button>
+      <button class="btn primary" id="u-add">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- editor de matéria (modal grande) -->
+<div class="modal-bg hidden" id="modal-materia">
+  <div class="modal mat-editor" style="width:720px">
+    <h2 id="mm-titulo">Matéria</h2>
+    <div class="campo"><label>Título (obrigatório)</label>
+      <input id="mm-t" placeholder="ATO Nº 10.436/2026"></div>
+    <div class="campo"><label>Subtítulo (opcional)</label>
+      <input id="mm-s" placeholder="RESULTADO FINAL DO 2º CURSO..."></div>
+    <div class="campo"><label>Corpo</label>
+      <div class="toolbar" id="mm-toolbar">
+        <button data-cmd="bold" title="Negrito"><b>N</b></button>
+        <button data-cmd="italic" title="Itálico"><i>I</i></button>
+        <button data-cmd="underline" title="Sublinhado"><u>S</u></button>
+        <button data-cmd="justifyLeft" title="Esquerda">⯇</button>
+        <button data-cmd="justifyCenter" title="Centralizar">≡</button>
+        <button data-cmd="justifyFull" title="Justificar">☰</button>
+        <button data-cmd="insertUnorderedList" title="Lista">•</button>
+        <button data-cmd="uppercase" title="MAIÚSCULAS">AA</button>
+        <button data-cmd="inserttable" title="Inserir tabela">▦</button>
+        <button data-cmd="removeFormat" title="Limpar formatação">⌫</button>
+      </div>
+      <div class="rich" id="mm-corpo" contenteditable="true"></div>
+      <div class="tbl-toolbar hidden" id="mm-tbl-toolbar">
+        <span class="tt-label">Tabela:</span>
+        <button data-tbl="row-above" title="Inserir linha acima">↥ linha</button>
+        <button data-tbl="row-below" title="Inserir linha abaixo">↧ linha</button>
+        <button data-tbl="row-del" title="Excluir linha">✕ linha</button>
+        <span class="tt-sep"></span>
+        <button data-tbl="col-left" title="Inserir coluna à esquerda">↤ col</button>
+        <button data-tbl="col-right" title="Inserir coluna à direita">↦ col</button>
+        <button data-tbl="col-del" title="Excluir coluna">✕ col</button>
+        <span class="tt-sep"></span>
+        <button data-tbl="head-toggle" title="Alternar célula de cabeçalho (cinza)">▭ cabeçalho</button>
+        <button data-tbl="tbl-del" title="Excluir tabela inteira">🗑 tabela</button>
+      </div>
+    </div>
+    <div class="campo"><label>Local e data (canto direito, opcional)</label>
+      <input id="mm-ld" placeholder="Quartel em Belo Horizonte, 03 de julho de 2026."></div>
+    <h2 style="font-size:13px;color:#556;margin:14px 0 8px">Assinatura da matéria</h2>
+    <div class="campo"><label>Nome completo</label>
+      <input id="mm-a-nome" placeholder="GUILHERME INÁCIO DO COUTO OLIVEIRA"></div>
+    <div class="campo row">
+      <div><label>Posto/Graduação</label><input id="mm-a-pg" placeholder="TENENTE-CORONEL BM"></div>
+      <div><label>Função</label><input id="mm-a-funcao" placeholder="RESPONDENDO PELO COMANDO"></div>
+    </div>
+    <div class="acoes">
+      <button class="btn" onclick="fecharModal('modal-materia')">Cancelar</button>
+      <button class="btn primary" id="mm-salvar">Salvar matéria</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
