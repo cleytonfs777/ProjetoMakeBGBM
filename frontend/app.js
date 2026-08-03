@@ -652,7 +652,6 @@ function atualizarNumeroPagina() {
    ========================================================================= */
 async function baixarPDF() {
   await salvarAtual();               // garante persistência antes de imprimir
-  toast("Abrindo diálogo de impressão — escolha “Salvar como PDF”.");
   setTimeout(() => window.print(), 400);
 }
 
