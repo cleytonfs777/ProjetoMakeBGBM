@@ -34,7 +34,6 @@ async function api(path, opts = {}) {
 /* --------------------------------------------------- boot */
 (async function init() {
   META = await api("/meta");
-  if (META.assets.brasao) $("#brand-logo").src = META.assets.brasao;
   montarTopbarLista();
   await carregarLista();
 })();
