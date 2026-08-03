@@ -635,6 +635,7 @@ function renderDocumento() {
     <table id="doc-print-table">
       <thead><tr><td>${cabecalhoImpressaoHTML()}</td></tr></thead>
       <tbody><tr><td>${corpo}</td></tr></tbody>
+      <tfoot><tr><td><div style="height:12mm"></div></td></tr></tfoot>
     </table>`;
   atualizarNumeroPagina();
 }

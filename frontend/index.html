@@ -175,6 +175,7 @@ main{padding:0;overflow:auto}
 #doc-print-table > tbody > tr,
 #doc-print-table > thead > tr > td,
 #doc-print-table > tbody > tr > td{display:block}
+#doc-print-table > tfoot{display:none}
 
 /* =========================================================
    IMPRESSÃO — o "Baixar BGBM (PDF)" usa window.print()
@@ -185,7 +186,7 @@ main{padding:0;overflow:auto}
    numeração de página incrementa via contador CSS.
    ========================================================= */
 @media print{
-  @page{size:A4;margin:10mm 10mm 12mm 10mm}
+  @page{size:A4;margin:0}
   html,body{background:#fff}
   /* FORÇA a impressão dos fundos coloridos (faixas, cabeçalho de tabela,
      separata) independentemente da opção "gráficos de plano de fundo" do
@@ -207,12 +208,17 @@ main{padding:0;overflow:auto}
   #doc-print-table{display:table;width:100%}
   #doc-print-table > thead{display:table-header-group}   /* repete por página */
   #doc-print-table > tbody{display:table-row-group}
+  #doc-print-table > tfoot{display:table-footer-group}
   #doc-print-table > thead > tr,
-  #doc-print-table > tbody > tr{display:table-row}
+  #doc-print-table > tbody > tr,
+  #doc-print-table > tfoot > tr{display:table-row}
   #doc-print-table > thead > tr > td,
-  #doc-print-table > tbody > tr > td{display:table-cell;padding:0}
-  /* pequeno respiro abaixo do cabeçalho repetido */
-  #doc-print-table > thead .cabecalho{margin:0 0 4px}
+  #doc-print-table > tbody > tr > td,
+  #doc-print-table > tfoot > tr > td{display:table-cell;padding:0}
+  
+  /* margens simuladas (já que @page margin é 0) */
+  #doc-print-table > thead .cabecalho{margin:10mm 10mm 4px 10mm}
+  #doc-print-table > tbody > tr > td{padding:0 10mm}
 
   /* numeração automática de páginas */
   body{counter-reset:pg var(--pag-base, 0)}
