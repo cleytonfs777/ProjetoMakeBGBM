@@ -121,4 +121,5 @@ def index():
     return FileResponse(FRONT / "index.html")
 
 
+app.mount("/assets", StaticFiles(directory=ASSETS), name="assets")
 app.mount("/static", StaticFiles(directory=FRONT), name="static")
